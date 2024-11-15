@@ -32,6 +32,7 @@
     "lint": "eslint --ext js .",
     "test": "mocha --reporter spec --bail --check-leaks test",
     "test-ci": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter spec --check-leaks test",
+    "test-c8-ci": "c8 -r html -r text mocha",
     "test-watch": "mocha -w --reporter spec --bail --check-leaks test"
   },
   "dependencies": {
@@ -47,6 +48,7 @@
     "eslint-plugin-promise": "4.0.1",
     "eslint-plugin-standard": "4.0.0",
     "istanbul": "0.4.5",
+    "c8": "^10.1.2",
     "mocha": "5.2.0",
     "mock-fs": "4.7.0",
     "sinon": "7.2.0",

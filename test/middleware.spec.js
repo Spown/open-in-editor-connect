@@ -9,25 +9,23 @@ var matchPath = require('./lib/match-local-path')
 var openInEditor = require('..')
 var util = require('../lib/util')
 
-describe('open-in-editor-connect', function () {
-  beforeEach(function () {
-    this.sandbox = sinon.createSandbox()
-    this.mockFs = function (options) {
-      mockFs(options)
-    }
-    this.fakeOpenSuccess = function () {
-      return this.sandbox.stub(util, 'open').callsFake(() => Promise.resolve(''))
-    }
-    this.fakeOpenError = function () {
-      return this.sandbox.stub(util, 'open').callsFake(() => Promise.reject(new Error('xx')))
-    }
-  })
-
-  afterEach(function () {
-    mockFs.restore()
-    this.sandbox.restore()
-  })
-
+beforeEach(function () {
+  this.sandbox = sinon.createSandbox()
+  this.mockFs = function (options) {
+    mockFs(options)
+  }
+  this.fakeOpenSuccess = function () {
+    return this.sandbox.stub(util, 'open').callsFake(() => Promise.resolve(''))
+  }
+  this.fakeOpenError = function () {
+    return this.sandbox.stub(util, 'open').callsFake(() => Promise.reject(new Error('xx')))
+  }
+})
+afterEach(function () {
+  mockFs.restore()
+  this.sandbox.restore()
+})
+describe('main logic', function () {
   it('should require root path', function () {
     assert.throws(openInEditor.bind(null), /root path required/)
   })
@@ -126,73 +124,100 @@ describe('open-in-editor-connect', function () {
         sinon.assert.calledWith(open, matchPath('/index.js:1'), { editor: 'vim' })
       })
   })
+})
 
-  describe('url params', function () {
-    it('should select editor with query param', function () {
-      var open = this.fakeOpenSuccess()
-      var middleware = openInEditor('/', { editor: { name: 'vim', binary: '/usr/bin/vim' } })
-      this.mockFs({ '/index.js': 'hello' })
+describe('url params', function () {
+  it('should select editor with query param', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/', { editor: { name: 'vim', binary: '/usr/bin/vim' } })
+    this.mockFs({ '/index.js': 'hello' })
 
-      return request(middleware).post('/index.js?edit=emacs')
-        .expect(200)
-        .expect(function () {
-          sinon.assert.calledOnce(open)
-          sinon.assert.calledWith(open, matchPath('/index.js'), { editor: 'emacs' })
-        })
-    })
-
-    it('should select default editor with empty query param', function () {
-      var open = this.fakeOpenSuccess()
-      var middleware = openInEditor('/', { editor: { name: 'vim' } })
-      this.mockFs({ '/index.js': 'hello' })
-
-      return request(middleware).post('/index.js?edit')
-        .expect(200)
-        .expect(function () {
-          sinon.assert.calledOnce(open)
-          sinon.assert.calledWith(open, matchPath('/index.js'), { editor: 'vim' })
-        })
-    })
-
-    it('should accept file position in query param', function () {
-      var open = this.fakeOpenSuccess()
-      var middleware = openInEditor('/', { editor: { name: 'vim' } })
-      this.mockFs({ '/index.js': 'hello' })
-
-      return request(middleware).post('/index.js?edit&at=1')
-        .expect(200)
-        .expect(function () {
-          sinon.assert.calledOnce(open)
-          sinon.assert.calledWith(open, matchPath('/index.js:1'), { editor: 'vim' })
-        })
-    })
-
-    it('should ignore other query arguments', function () {
-      var open = this.fakeOpenSuccess()
-      var middleware = openInEditor('/')
-      this.mockFs({ '/index.js': 'hello' })
-
-      return request(middleware).post('/index.js:1?a=1&b=&c')
-        .expect(200)
-        .expect(function () {
-          sinon.assert.calledOnce(open)
-          sinon.assert.calledWith(open, matchPath('/index.js:1'))
-        })
-    })
+    return request(middleware).post('/index.js?edit=emacs')
+      .expect(200)
+      .expect(function () {
+        sinon.assert.calledOnce(open)
+        sinon.assert.calledWith(open, matchPath('/index.js'), { editor: 'emacs' })
+      })
   })
 
-  describe('UI', function () {
-    it('should respond with HTML', function () {
-      var open = this.fakeOpenSuccess()
-      var middleware = openInEditor('/')
-      this.mockFs({ '/index.js': 'hello' })
+  it('should select default editor with empty query param', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/', { editor: { name: 'vim' } })
+    this.mockFs({ '/index.js': 'hello' })
 
-      return request(middleware).get('/index.js:1')
-        .expect(200)
-        .expect('Content-Type', 'text/html')
-        .expect(function () {
-          sinon.assert.notCalled(open)
-        })
-    })
+    return request(middleware).post('/index.js?edit')
+      .expect(200)
+      .expect(function () {
+        sinon.assert.calledOnce(open)
+        sinon.assert.calledWith(open, matchPath('/index.js'), { editor: 'vim' })
+      })
+  })
+
+  it('should accept file position in query param', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/', { editor: { name: 'vim' } })
+    this.mockFs({ '/index.js': 'hello' })
+
+    return request(middleware).post('/index.js?edit&at=1')
+      .expect(200)
+      .expect(function () {
+        sinon.assert.calledOnce(open)
+        sinon.assert.calledWith(open, matchPath('/index.js:1'), { editor: 'vim' })
+      })
+  })
+
+  it('should ignore other query arguments', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/')
+    this.mockFs({ '/index.js': 'hello' })
+
+    return request(middleware).post('/index.js:1?a=1&b=&c')
+      .expect(200)
+      .expect(function () {
+        sinon.assert.calledOnce(open)
+        sinon.assert.calledWith(open, matchPath('/index.js:1'))
+      })
+  })
+
+  it('should transform incoming url', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/', { transform: /^\/C:\/some\/fs\/path(.*)$/ })
+    this.mockFs({ '/index.js': 'hello' })
+
+    return request(middleware).post('/C:/some/fs/path/index.js:1?a=1&b=&c')
+      .expect(200)
+      .expect(function () {
+        sinon.assert.calledOnce(open)
+        sinon.assert.calledWith(open, matchPath('/index.js:1'))
+      })
+  })
+})
+
+describe('fails', function () {
+  it('should fail on faulty url', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/')
+    this.mockFs({ '/index.js': 'hello' })
+
+    return request(middleware).post('/--|--')
+      .expect(404)
+      .expect(function () {
+        sinon.assert.notCalled(open)
+      })
+  })
+})
+
+describe('UI', function () {
+  it('should respond with HTML', function () {
+    var open = this.fakeOpenSuccess()
+    var middleware = openInEditor('/')
+    this.mockFs({ '/index.js': 'hello' })
+
+    return request(middleware).get('/index.js:1')
+      .expect(200)
+      .expect('Content-Type', 'text/html')
+      .expect(function () {
+        sinon.assert.notCalled(open)
+      })
   })
 })
